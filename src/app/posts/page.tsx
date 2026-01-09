@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import PostCard from '../../components/PostCard'
-import ConfirmDialog from '../../components/ConfirmDialog'
+import PostCard from '../../components/posts/PostCard'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 
 type Post = {
   id: number
@@ -59,8 +59,13 @@ export default function PostsPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
+  // Check if cache is expired
+  const isCacheExpired = (timestamp: number): boolean => {
+    return Date.now() - timestamp > CACHE_DURATION
+  }
+
   // Load from cache
-  const loadFromCache = (userId?: string): Post[] | null => {
+  const loadFromCache = (userId?: string): { data: Post[]; isStale: boolean } | null => {
     try {
       const cached = localStorage.getItem(CACHE_KEY)
       if (!cached) return null
@@ -70,7 +75,8 @@ export default function PostsPage() {
       // Check if cache matches current filter
       if (cacheData.userId !== userId) return null
 
-      return cacheData.data
+      const isStale = isCacheExpired(cacheData.timestamp)
+      return { data: cacheData.data, isStale }
     } catch {
       return null
     }
@@ -127,13 +133,19 @@ export default function PostsPage() {
 
   // Initial fetch with cache
   useEffect(() => {
-    const cachedPosts = loadFromCache()
+    const cached = loadFromCache()
     
-    if (cachedPosts && cachedPosts.length > 0) {
+    if (cached && cached.data.length > 0) {
       // Show cached data immediately
-      setPosts(cachedPosts)
+      setPosts(cached.data)
       setLoading(false)
-      // Revalidate in background
+      
+      // If cache is stale, show warning and revalidate
+      if (cached.isStale) {
+        setStaleWarning(true)
+      }
+      
+      // Always revalidate in background
       fetchPosts(undefined, true)
     } else {
       // No cache, normal fetch
@@ -142,13 +154,24 @@ export default function PostsPage() {
   }, [])
 
   const handleApplyFilter = () => {
+    // If filter is empty, behave like Clear
+    if (!userIdFilter.trim()) {
+      handleClearFilter()
+      return
+    }
+    
     setAppliedFilter(userIdFilter)
     
     // Try to load from cache first
-    const cachedPosts = loadFromCache(userIdFilter)
-    if (cachedPosts && cachedPosts.length > 0) {
-      setPosts(cachedPosts)
+    const cached = loadFromCache(userIdFilter)
+    if (cached && cached.data.length > 0) {
+      setPosts(cached.data)
       setLoading(false)
+      
+      if (cached.isStale) {
+        setStaleWarning(true)
+      }
+      
       fetchPosts(userIdFilter, true)
     } else {
       fetchPosts(userIdFilter)
@@ -159,10 +182,15 @@ export default function PostsPage() {
     setUserIdFilter('')
     setAppliedFilter('')
     
-    const cachedPosts = loadFromCache()
-    if (cachedPosts && cachedPosts.length > 0) {
-      setPosts(cachedPosts)
+    const cached = loadFromCache()
+    if (cached && cached.data.length > 0) {
+      setPosts(cached.data)
       setLoading(false)
+      
+      if (cached.isStale) {
+        setStaleWarning(true)
+      }
+      
       fetchPosts(undefined, true)
     } else {
       fetchPosts()
@@ -181,9 +209,12 @@ export default function PostsPage() {
     setIsDeleting(true)
     setDeleteError(null)
 
-    // Optimistic delete: remove from UI immediately
+    // Compute next posts state before any async operations
     const postToRemove = posts.find((p) => p.id === postToDelete)
-    setPosts((prev) => prev.filter((post) => post.id !== postToDelete))
+    const nextPosts = posts.filter((post) => post.id !== postToDelete)
+    
+    // Optimistic delete: remove from UI immediately
+    setPosts(nextPosts)
 
     try {
       const response = await fetch(`/api/posts/${postToDelete}`, {
@@ -195,16 +226,17 @@ export default function PostsPage() {
         throw new Error(data.error || 'Failed to delete post')
       }
 
-      // Success: update cache and close dialog
-      saveToCache(posts.filter((p) => p.id !== postToDelete), appliedFilter || undefined)
+      // Success: update cache with consistent nextPosts and close dialog
+      saveToCache(nextPosts, appliedFilter || undefined)
       setDeleteDialogOpen(false)
       setPostToDelete(null)
     } catch (err) {
       // Restore post on error
       if (postToRemove) {
         setPosts((prev) => {
+          // Insert back in correct position (sorted by id desc)
           const restored = [...prev, postToRemove]
-          restored.sort((a, b) => b.id - a.id) // Maintain order
+          restored.sort((a, b) => b.id - a.id)
           return restored
         })
       }
