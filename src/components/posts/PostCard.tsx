@@ -22,7 +22,7 @@ export default function PostCard({ id, title, body, userId, user, onDelete }: Po
     <article className="group h-full flex flex-col bg-slate-900 border border-slate-800 rounded-xl p-6 transition-all duration-200 hover:bg-slate-800 hover:border-primary shadow-none hover:shadow-lg hover:shadow-primary/10">
       {/* Header with title and delete button */}
       <div className="flex items-start justify-between gap-4 mb-4">
-        <h2 className="text-xl font-semibold text-slate-100 flex-1 leading-snug transition-colors duration-200 group-hover:text-primary">
+        <h2 className="text-xl font-semibold text-slate-100 flex-1 leading-snug line-clamp-2 transition-colors duration-200 group-hover:text-primary">
           {title}
         </h2>
         <button
@@ -30,7 +30,7 @@ export default function PostCard({ id, title, body, userId, user, onDelete }: Po
           onClick={handleDelete}
           disabled={!onDelete}
           aria-label={`Delete post ${id}`}
-          className="flex-shrink-0 px-3 py-1.5 text-xs font-medium text-red-400 opacity-60 group-hover:opacity-100 hover:text-red-300 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 rounded-lg transition-all duration-200"
+          className="flex-shrink-0 px-3 py-1.5 text-xs font-medium text-red-400 opacity-60 group-hover:opacity-100 hover:text-red-300 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:opacity-30 disabled:hover:text-red-400 disabled:hover:bg-transparent disabled:hover:border-transparent"
         >
           Delete
         </button>

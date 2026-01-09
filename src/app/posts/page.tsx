@@ -52,6 +52,7 @@ export default function PostsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [staleWarning, setStaleWarning] = useState(false)
+  const [refreshFailed, setRefreshFailed] = useState(false)
   const [userIdFilter, setUserIdFilter] = useState('')
   const [appliedFilter, setAppliedFilter] = useState('')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -102,7 +103,6 @@ export default function PostsPage() {
       setLoading(true)
       setError(null)
     }
-    setStaleWarning(false)
 
     try {
       const url = userId
@@ -117,10 +117,14 @@ export default function PostsPage() {
       const data = await response.json()
       setPosts(data)
       saveToCache(data, userId)
+      
+      // Clear warnings on successful refresh
+      setStaleWarning(false)
+      setRefreshFailed(false)
     } catch (err) {
       if (isBackgroundRefresh) {
         // Background refresh failed, show warning but keep cached data
-        setStaleWarning(true)
+        setRefreshFailed(true)
       } else {
         setError(err instanceof Error ? err.message : 'An error occurred')
       }
@@ -319,7 +323,18 @@ export default function PostsPage() {
         </div>
 
       {/* Stale Data Warning */}
-      {staleWarning && (
+      {staleWarning && !refreshFailed && (
+        <div className="bg-blue-950/30 border border-blue-800/50 rounded-xl p-4 mb-6">
+          <div className="flex items-start justify-between gap-4">
+            <p className="text-sm text-blue-300 flex-1">
+              <strong>Info:</strong> Showing cached data. Refreshing in the background.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Refresh Failed Warning */}
+      {refreshFailed && (
         <div className="bg-yellow-950/30 border border-yellow-800/50 rounded-xl p-4 mb-6">
           <div className="flex items-start justify-between gap-4">
             <p className="text-sm text-yellow-300 flex-1">

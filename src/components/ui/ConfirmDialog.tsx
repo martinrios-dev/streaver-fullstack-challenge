@@ -24,11 +24,24 @@ export default function ConfirmDialog({
   loading = false,
 }: ConfirmDialogProps) {
   const cancelButtonRef = useRef<HTMLButtonElement>(null)
+  const confirmButtonRef = useRef<HTMLButtonElement>(null)
+  const previouslyFocusedElement = useRef<HTMLElement | null>(null)
 
-  // Focus management: focus cancel button when dialog opens
+  // Focus management: focus cancel button when dialog opens and restore focus on close
   useEffect(() => {
-    if (open && cancelButtonRef.current) {
-      cancelButtonRef.current.focus()
+    if (open) {
+      // Save currently focused element
+      previouslyFocusedElement.current = document.activeElement as HTMLElement
+      
+      // Focus cancel button
+      if (cancelButtonRef.current) {
+        cancelButtonRef.current.focus()
+      }
+    } else {
+      // Restore focus when dialog closes
+      if (previouslyFocusedElement.current) {
+        previouslyFocusedElement.current.focus()
+      }
     }
   }, [open])
 
@@ -55,12 +68,44 @@ export default function ConfirmDialog({
     return () => document.removeEventListener('keydown', handleEscape)
   }, [open, loading, onCancel])
 
+  // Focus trap: cycle Tab between Cancel and Confirm buttons
+  useEffect(() => {
+    const handleTab = (e: KeyboardEvent) => {
+      if (!open || e.key !== 'Tab') return
+
+      const cancelButton = cancelButtonRef.current
+      const confirmButton = confirmButtonRef.current
+
+      if (!cancelButton || !confirmButton) return
+
+      const activeElement = document.activeElement
+
+      if (e.shiftKey) {
+        // Shift+Tab: moving backwards
+        if (activeElement === cancelButton) {
+          e.preventDefault()
+          confirmButton.focus()
+        }
+      } else {
+        // Tab: moving forwards
+        if (activeElement === confirmButton) {
+          e.preventDefault()
+          cancelButton.focus()
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleTab)
+    return () => document.removeEventListener('keydown', handleTab)
+  }, [open])
+
   if (!open) return null
 
   return (
     <div
       className="fixed inset-0 z-50 overflow-y-auto"
       aria-labelledby="dialog-title"
+      aria-describedby={description ? "dialog-description" : undefined}
       role="dialog"
       aria-modal="true"
     >
@@ -102,7 +147,7 @@ export default function ConfirmDialog({
                   {title}
                 </h3>
                 {description && (
-                  <p className="text-sm text-slate-300 mb-4">{description}</p>
+                  <p className="text-sm text-slate-300 mb-4" id="dialog-description">{description}</p>
                 )}
                 {loading && (
                   <div className="flex items-center text-sm text-slate-300">
@@ -129,6 +174,7 @@ export default function ConfirmDialog({
               type="button"
               onClick={onConfirm}
               disabled={loading}
+              ref={confirmButtonRef}
               className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {confirmText}
