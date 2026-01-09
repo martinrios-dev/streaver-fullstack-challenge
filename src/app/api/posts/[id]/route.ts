@@ -6,7 +6,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id, 10)
+    const { id: idParam } = await params
+    const id = parseInt(idParam, 10)
+
 
     // Validate id is a number
     if (isNaN(id)) {
