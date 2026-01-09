@@ -13,3 +13,13 @@ body {
 a { color: inherit; text-decoration: none; }
 a:hover { text-decoration: none; }
 
+/* Hide number input spinners */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type='number'] {
+  -moz-appearance: textfield;
+}

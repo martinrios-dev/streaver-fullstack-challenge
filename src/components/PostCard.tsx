@@ -3,10 +3,15 @@ interface PostCardProps {
   title: string
   body: string
   userId: number
+  user?: {
+    name: string
+    username: string
+    email: string
+  }
   onDelete?: (id: number) => void
 }
 
-export default function PostCard({ id, title, body, userId, onDelete }: PostCardProps) {
+export default function PostCard({ id, title, body, userId, user, onDelete }: PostCardProps) {
   const handleDelete = () => {
     if (onDelete) {
       onDelete(id)
@@ -37,11 +42,20 @@ export default function PostCard({ id, title, body, userId, onDelete }: PostCard
       </p>
 
       {/* Footer with metadata */}
-      <div className="mt-auto flex items-center gap-3 pt-4 border-t border-slate-800 group-hover:border-slate-700 transition-colors duration-200">
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-800 text-slate-400 border border-slate-700 group-hover:border-slate-600 transition-colors">
-          User {userId}
-        </span>
-        <span className="text-xs text-slate-500 group-hover:text-slate-400 transition-colors">ID: {id}</span>
+      <div className="mt-auto flex flex-col gap-2 pt-4 border-t border-slate-800 group-hover:border-slate-700 transition-colors duration-200">
+        {user && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-slate-300">@{user.username}</span>
+            <span className="text-xs text-slate-500">•</span>
+            <span className="text-xs text-slate-500">{user.name}</span>
+          </div>
+        )}
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-800 text-slate-400 border border-slate-700 group-hover:border-slate-600 transition-colors">
+            User ID: {userId}
+          </span>
+          <span className="text-xs text-slate-500 group-hover:text-slate-400 transition-colors">Post ID: {id}</span>
+        </div>
       </div>
     </article>
   )

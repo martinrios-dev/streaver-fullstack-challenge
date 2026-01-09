@@ -17,10 +17,41 @@ type Post = {
   }
 }
 
+type CacheData = {
+  data: Post[]
+  timestamp: number
+  userId?: string
+}
+
+const CACHE_KEY = 'posts_cache'
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+
+// Skeleton PostCard component
+function PostCardSkeleton() {
+  return (
+    <div className="h-full flex flex-col bg-slate-900 border border-slate-800 rounded-xl p-6 animate-pulse">
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <div className="h-6 bg-slate-800 rounded w-3/4"></div>
+        <div className="h-8 w-16 bg-slate-800 rounded"></div>
+      </div>
+      <div className="space-y-2 mb-6">
+        <div className="h-4 bg-slate-800 rounded w-full"></div>
+        <div className="h-4 bg-slate-800 rounded w-5/6"></div>
+        <div className="h-4 bg-slate-800 rounded w-4/6"></div>
+      </div>
+      <div className="mt-auto flex items-center gap-3 pt-4 border-t border-slate-800">
+        <div className="h-6 w-16 bg-slate-800 rounded-full"></div>
+        <div className="h-4 w-12 bg-slate-800 rounded"></div>
+      </div>
+    </div>
+  )
+}
+
 export default function PostsPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [staleWarning, setStaleWarning] = useState(false)
   const [userIdFilter, setUserIdFilter] = useState('')
   const [appliedFilter, setAppliedFilter] = useState('')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -28,10 +59,45 @@ export default function PostsPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
+  // Load from cache
+  const loadFromCache = (userId?: string): Post[] | null => {
+    try {
+      const cached = localStorage.getItem(CACHE_KEY)
+      if (!cached) return null
+
+      const cacheData: CacheData = JSON.parse(cached)
+      
+      // Check if cache matches current filter
+      if (cacheData.userId !== userId) return null
+
+      return cacheData.data
+    } catch {
+      return null
+    }
+  }
+
+  // Save to cache
+  const saveToCache = (data: Post[], userId?: string) => {
+    try {
+      const cacheData: CacheData = {
+        data,
+        timestamp: Date.now(),
+        userId,
+      }
+      localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData))
+    } catch {
+      // Ignore cache errors
+    }
+  }
+
   // Fetch posts from API
-  const fetchPosts = async (userId?: string) => {
-    setLoading(true)
-    setError(null)
+  const fetchPosts = async (userId?: string, isBackgroundRefresh = false) => {
+    if (!isBackgroundRefresh) {
+      setLoading(true)
+      setError(null)
+    }
+    setStaleWarning(false)
+
     try {
       const url = userId
         ? `/api/posts?userId=${encodeURIComponent(userId)}`
@@ -44,27 +110,63 @@ export default function PostsPage() {
       
       const data = await response.json()
       setPosts(data)
+      saveToCache(data, userId)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      if (isBackgroundRefresh) {
+        // Background refresh failed, show warning but keep cached data
+        setStaleWarning(true)
+      } else {
+        setError(err instanceof Error ? err.message : 'An error occurred')
+      }
     } finally {
-      setLoading(false)
+      if (!isBackgroundRefresh) {
+        setLoading(false)
+      }
     }
   }
 
-  // Initial fetch
+  // Initial fetch with cache
   useEffect(() => {
-    fetchPosts()
+    const cachedPosts = loadFromCache()
+    
+    if (cachedPosts && cachedPosts.length > 0) {
+      // Show cached data immediately
+      setPosts(cachedPosts)
+      setLoading(false)
+      // Revalidate in background
+      fetchPosts(undefined, true)
+    } else {
+      // No cache, normal fetch
+      fetchPosts()
+    }
   }, [])
 
   const handleApplyFilter = () => {
     setAppliedFilter(userIdFilter)
-    fetchPosts(userIdFilter)
+    
+    // Try to load from cache first
+    const cachedPosts = loadFromCache(userIdFilter)
+    if (cachedPosts && cachedPosts.length > 0) {
+      setPosts(cachedPosts)
+      setLoading(false)
+      fetchPosts(userIdFilter, true)
+    } else {
+      fetchPosts(userIdFilter)
+    }
   }
 
   const handleClearFilter = () => {
     setUserIdFilter('')
     setAppliedFilter('')
-    fetchPosts()
+    
+    const cachedPosts = loadFromCache()
+    if (cachedPosts && cachedPosts.length > 0) {
+      setPosts(cachedPosts)
+      setLoading(false)
+      fetchPosts(undefined, true)
+    } else {
+      fetchPosts()
+    }
   }
 
   const handleDeleteClick = (id: number) => {
@@ -79,6 +181,10 @@ export default function PostsPage() {
     setIsDeleting(true)
     setDeleteError(null)
 
+    // Optimistic delete: remove from UI immediately
+    const postToRemove = posts.find((p) => p.id === postToDelete)
+    setPosts((prev) => prev.filter((post) => post.id !== postToDelete))
+
     try {
       const response = await fetch(`/api/posts/${postToDelete}`, {
         method: 'DELETE',
@@ -89,12 +195,19 @@ export default function PostsPage() {
         throw new Error(data.error || 'Failed to delete post')
       }
 
-      // Remove post from local state
-      setPosts((prev) => prev.filter((post) => post.id !== postToDelete))
-      
+      // Success: update cache and close dialog
+      saveToCache(posts.filter((p) => p.id !== postToDelete), appliedFilter || undefined)
       setDeleteDialogOpen(false)
       setPostToDelete(null)
     } catch (err) {
+      // Restore post on error
+      if (postToRemove) {
+        setPosts((prev) => {
+          const restored = [...prev, postToRemove]
+          restored.sort((a, b) => b.id - a.id) // Maintain order
+          return restored
+        })
+      }
       setDeleteError(err instanceof Error ? err.message : 'Failed to delete post')
     } finally {
       setIsDeleting(false)
@@ -173,6 +286,23 @@ export default function PostsPage() {
           </div>
         </div>
 
+      {/* Stale Data Warning */}
+      {staleWarning && (
+        <div className="bg-yellow-950/30 border border-yellow-800/50 rounded-xl p-4 mb-6">
+          <div className="flex items-start justify-between gap-4">
+            <p className="text-sm text-yellow-300 flex-1">
+              <strong>Notice:</strong> Could not refresh posts. Showing cached data.
+            </p>
+            <button
+              onClick={() => fetchPosts(appliedFilter || undefined)}
+              className="px-3 py-1 text-xs font-medium text-yellow-300 hover:text-yellow-200 border border-yellow-800 hover:border-yellow-700 rounded-lg transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Error State */}
       {error && (
         <div className="bg-red-950/50 border border-red-800 rounded-xl p-4 mb-6">
@@ -190,13 +320,12 @@ export default function PostsPage() {
         </div>
       )}
 
-      {/* Loading State */}
-      {loading && (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 mb-6 text-center">
-          <div className="inline-flex items-center text-slate-300">
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary mr-3"></div>
-            Loading posts...
-          </div>
+      {/* Skeleton Loading State */}
+      {loading && posts.length === 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <PostCardSkeleton key={i} />
+          ))}
         </div>
       )}
 
@@ -208,13 +337,14 @@ export default function PostsPage() {
       )}
 
       {/* Posts List */}
-      {!loading && !error && posts.length > 0 && (
+      {posts.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {posts.map((post) => (
             <PostCard
               key={post.id}
               id={post.id}
               userId={post.userId}
+              user={post.user}
               title={post.title}
               body={post.body}
               onDelete={handleDeleteClick}
