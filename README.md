@@ -53,7 +53,9 @@ This application provides a post management interface designed for users with sl
 - `pnpm db:migrate` - Run Prisma migrations
 - `pnpm db:seed` - Seed the database
 - `pnpm db:studio` - Open Prisma Studio
-- `pnpm db:reset` - Reset database and re-run migrations 
+- `pnpm db:reset` - Reset database and re-run migrations
+
+> **Note**: `prisma generate` runs automatically after `pnpm install` via the `postinstall` hook. 
 
 ## Database
 
