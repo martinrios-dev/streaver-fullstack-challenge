@@ -305,6 +305,11 @@ export default function PostsPage() {
                 type="number"
                 value={userIdFilter}
                 onChange={(e) => setUserIdFilter(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleApplyFilter()
+                  }
+                }}
                 placeholder="e.g. 3"
                 className="w-full px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               />

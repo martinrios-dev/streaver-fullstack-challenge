@@ -5,6 +5,13 @@ import { Inter } from 'next/font/google'
 export const metadata = {
   title: 'Streaver Full-Stack Challenge',
   description: 'A modern full-stack application with Next.js, TypeScript, Prisma, and SQLite',
+  icons: {
+    icon: [
+      {
+        url: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">📝</text></svg>',
+      },
+    ],
+  },
 }
 const inter = Inter({ subsets: ['latin'] })
 
