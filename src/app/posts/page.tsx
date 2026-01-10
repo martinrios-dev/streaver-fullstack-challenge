@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import PostCard from '../../components/posts/PostCard'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 
@@ -67,6 +67,9 @@ export default function PostsPage() {
 
   // Load from cache
   const loadFromCache = (userId?: string): { data: Post[]; isStale: boolean } | null => {
+    // Only access localStorage on the client
+    if (typeof window === 'undefined') return null
+    
     try {
       const cached = localStorage.getItem(CACHE_KEY)
       if (!cached) return null
@@ -85,6 +88,9 @@ export default function PostsPage() {
 
   // Save to cache
   const saveToCache = (data: Post[], userId?: string) => {
+    // Only access localStorage on the client
+    if (typeof window === 'undefined') return
+    
     try {
       const cacheData: CacheData = {
         data,
@@ -98,7 +104,7 @@ export default function PostsPage() {
   }
 
   // Fetch posts from API
-  const fetchPosts = async (userId?: string, isBackgroundRefresh = false) => {
+  const fetchPosts = useCallback(async (userId?: string, isBackgroundRefresh = false) => {
     if (!isBackgroundRefresh) {
       setLoading(true)
       setError(null)
@@ -133,7 +139,7 @@ export default function PostsPage() {
         setLoading(false)
       }
     }
-  }
+  }, [])
 
   // Initial fetch with cache
   useEffect(() => {
@@ -155,7 +161,7 @@ export default function PostsPage() {
       // No cache, normal fetch
       fetchPosts()
     }
-  }, [])
+  }, [fetchPosts])
 
   const handleApplyFilter = () => {
     // If filter is empty, behave like Clear

@@ -2,17 +2,17 @@ import Link from 'next/link'
 
 export default function HomePage() {
   return (
-    <div className="py-20">
-      <div className="max-w-4xl">
+    <div className="min-h-[80vh] flex items-center justify-center py-20">
+      <div className="max-w-4xl mx-auto text-center">
         <h1 className="text-5xl sm:text-6xl font-bold text-white mb-6 tracking-tight">
           Streaver Full-Stack Challenge
         </h1>
 
-        <p className="text-xl text-slate-400 mb-10 leading-relaxed max-w-2xl">
+        <p className="text-xl text-slate-400 mb-10 leading-relaxed max-w-2xl mx-auto">
           A modern posts management system built with Next.js, TypeScript, Prisma, and SQLite.
         </p>
 
-        <div className="flex flex-wrap gap-3 mb-12">
+        <div className="flex flex-wrap gap-3 mb-12 justify-center">
           {['nextjs', 'typescript', 'prisma', 'sqlite'].map((tag) => (
             <span
               key={tag}
