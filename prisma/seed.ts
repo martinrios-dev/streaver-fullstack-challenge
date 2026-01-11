@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log('🌱 Seeding database...')
+  console.log('Seeding database...')
 
   try {
     // Fetch users from JSONPlaceholder
@@ -23,7 +23,7 @@ async function main() {
     const posts = await postsResponse.json()
 
     // Seed users with upsert (idempotent)
-    console.log('  → Seeding users...')
+    console.log(' → Seeding users...')
     for (const u of users) {
       await prisma.user.upsert({
         where: { id: u.id },
@@ -40,7 +40,7 @@ async function main() {
         },
       })
     }
-    console.log(`  ✓ Seeded ${users.length} users`)
+    console.log(`Seeded ${users.length} users`)
 
     // Seed posts with upsert (idempotent)
     console.log('  → Seeding posts...')
@@ -60,9 +60,9 @@ async function main() {
         },
       })
     }
-    console.log(`  ✓ Seeded ${posts.length} posts`)
+    console.log(`Seeded ${posts.length} posts`)
 
-    console.log('🌱 Seeding completed successfully!')
+    console.log('Seeding completed successfully!')
   } catch (error) {
     console.error('❌ Seeding error:', error instanceof Error ? error.message : error)
     throw error
