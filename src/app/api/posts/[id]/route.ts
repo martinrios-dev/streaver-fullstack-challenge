@@ -11,7 +11,7 @@ export async function DELETE(
 
 
     // Validate id is a number
-    if (isNaN(id)) {
+    if (!Number.isInteger(id)) {
       return NextResponse.json(
         { error: 'Invalid post ID. Must be a number.' },
         { status: 400 }
