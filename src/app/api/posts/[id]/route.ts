@@ -3,10 +3,10 @@ import { prisma } from '../../../../lib/prisma'
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id: idParam } = await params
+    const { id: idParam } = params
     const id = parseInt(idParam, 10)
 
 
